@@ -305,8 +305,8 @@
           <div class="col">
             <h3>Параметри датасету</h3>
             <ul>
-              <li>805 референс тайлів (23 × 35 сітка)</li>
-              <li>Покриття: ~900 × 1400 метрів</li>
+              <li>462 референс тайли (21 × 22 сітка)</li>
+              <li>Покриття: 800 × 840 метрів</li>
               <li>Крок сітки: 40 метрів</li>
               <li>Роздільність: 256 × 256 px</li>
             </ul>
@@ -369,15 +369,15 @@
 
         <div class="stats">
           <div class="stat-item">
-            <div class="stat-value">5.5×</div>
+            <div class="stat-value">9.4×</div>
             <div class="stat-label">Прискорення</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">7.6s</div>
-            <div class="stat-label">63 тайли</div>
+            <div class="stat-value">19s</div>
+            <div class="stat-label">462 тайли</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">8.3</div>
+            <div class="stat-value">42.6</div>
             <div class="stat-label">tiles/sec</div>
           </div>
         </div>
@@ -395,30 +395,24 @@
           <tbody>
             <tr>
               <td>Sequential</td>
-              <td>63</td>
-              <td class="num">41.9 s</td>
-              <td class="num">1.5 t/s</td>
+              <td>462</td>
+              <td class="num">181.0 s</td>
+              <td class="num">2.6 t/s</td>
               <td class="num">1.0×</td>
             </tr>
             <tr>
-              <td class="highlight">Parallel (25 workers)</td>
-              <td>63</td>
-              <td class="num highlight">7.6 s</td>
-              <td class="num highlight">8.3 t/s</td>
-              <td class="num highlight">5.5×</td>
-            </tr>
-            <tr>
-              <td>Paper-scale (est.)</td>
-              <td>805</td>
-              <td class="num">~97 s</td>
-              <td class="num">8.3 t/s</td>
-              <td class="num">~5.5×</td>
+              <td class="highlight">Parallel (60 workers)</td>
+              <td>462</td>
+              <td class="num highlight">19.3 s</td>
+              <td class="num highlight">42.6 t/s</td>
+              <td class="num highlight">9.4×</td>
             </tr>
           </tbody>
         </table>
 
         <p style="color: var(--muted); font-size: 15px; margin-top: 24px">
-          ThreadPoolExecutor з connection pooling. Оптимум: 25 workers з retry logic.
+          ThreadPoolExecutor з connection pooling та URL signing. 60 workers,
+          disk-based tile caching. 11,009 референс тайлів.
         </p>
       </section>
 
@@ -429,11 +423,11 @@
 
         <div class="stats">
           <div class="stat-item">
-            <div class="stat-value">805</div>
+            <div class="stat-value">462</div>
             <div class="stat-label">Тайлів</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">23×35</div>
+            <div class="stat-value">21×22</div>
             <div class="stat-label">Сітка</div>
           </div>
           <div class="stat-item">
@@ -554,17 +548,17 @@
                 даних
               </li>
               <li>
-                Паралельне завантаження дає <strong>5.5× прискорення</strong>
+                Паралельне завантаження дає <strong>9.4× прискорення</strong>
               </li>
               <li>Нарізка референсів з мозаїки економить API-запити</li>
-              <li>805 тайлів за ~97 секунд (vs ~9 хвилин sequential)</li>
+              <li>462 тайли за 19 секунд (vs 3 хвилини sequential)</li>
             </ul>
           </div>
           <div class="col">
             <h3>Рекомендації</h3>
             <ul>
               <li>URL signing для великих обсягів даних</li>
-              <li>25 workers оптимально з connection pooling</li>
+              <li>60 workers з disk-based caching</li>
               <li>Web Mercator для безшовного зшивання</li>
               <li>Zoom 19 для VPR на низьких висотах</li>
             </ul>

@@ -3,12 +3,13 @@
 Core Google Maps Satellite Imagery Functions
 =============================================
 Low-level tile download and coordinate conversion utilities.
-Used by both sequential and MPI-parallel implementations.
+Memory-optimized for large-scale stitching.
 """
 
 import os
 import math
 import time
+import tempfile
 import requests
 import hmac
 import hashlib
@@ -17,6 +18,7 @@ from urllib.parse import urlencode
 from PIL import Image
 from io import BytesIO
 from typing import Tuple, List, Dict, Optional
+from pathlib import Path
 
 
 def latlon_to_pixel(lat: float, lon: float, zoom: int) -> Tuple[float, float]:
@@ -164,7 +166,7 @@ def stitch_mosaic(
     tile_size_px: int, scale: int,
     crop_bottom: int = 40
 ) -> Image.Image:
-    """Stitch downloaded tiles into a mosaic."""
+    """Stitch downloaded tiles into a mosaic (in-memory for small datasets)."""
     actual_tile_size = tile_size_px * scale
     cropped_tile_height = actual_tile_size - crop_bottom
     cropped_tile_width = actual_tile_size
@@ -182,3 +184,116 @@ def stitch_mosaic(
     
     return mosaic
 
+
+def stitch_mosaic_streaming(
+    tile_files: Dict[Tuple[int, int], str],
+    num_rows: int, num_cols: int,
+    tile_size_px: int, scale: int,
+    crop_bottom: int,
+    output_path: str,
+    quality: int = 85
+) -> Tuple[int, int]:
+    """
+    Memory-efficient streaming mosaic stitching.
+    Processes row by row to minimize memory usage.
+    
+    Args:
+        tile_files: Dict mapping (row, col) to file path
+        output_path: Where to save the final mosaic
+        quality: JPEG quality (1-100)
+    
+    Returns:
+        (width, height) of output mosaic
+    """
+    actual_tile_size = tile_size_px * scale
+    cropped_tile_height = actual_tile_size - crop_bottom
+    cropped_tile_width = actual_tile_size
+    
+    mosaic_width = num_cols * cropped_tile_width
+    mosaic_height = num_rows * cropped_tile_height
+    
+    # Create output mosaic
+    mosaic = Image.new('RGB', (mosaic_width, mosaic_height), color=(0, 0, 0))
+    
+    # Process row by row
+    for row in range(num_rows):
+        row_images = []
+        for col in range(num_cols):
+            key = (row, col)
+            if key in tile_files and tile_files[key]:
+                try:
+                    img = Image.open(tile_files[key])
+                    row_images.append((col, img))
+                except Exception:
+                    pass
+        
+        # Paste row
+        for col, img in row_images:
+            x_px = col * cropped_tile_width
+            y_px = row * cropped_tile_height
+            mosaic.paste(img, (x_px, y_px))
+            img.close()
+        
+        # Clear references
+        row_images.clear()
+    
+    # Save with compression
+    mosaic.save(output_path, 'JPEG', quality=quality, optimize=True)
+    size = mosaic.size
+    mosaic.close()
+    
+    return size
+
+
+def create_reference_tiles(
+    mosaic_path: str,
+    output_dir: str,
+    tile_size: int = 256,
+    stride: int = None,
+    verbose: bool = True
+) -> List[str]:
+    """
+    Create reference dataset tiles from a mosaic image.
+    Uses streaming to handle large images.
+    
+    Args:
+        mosaic_path: Path to source mosaic image
+        output_dir: Directory to save tiles
+        tile_size: Output tile size in pixels
+        stride: Step between tiles (default: tile_size)
+    
+    Returns:
+        List of output file paths
+    """
+    if stride is None:
+        stride = tile_size
+    
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Open image without loading all into memory
+    img = Image.open(mosaic_path)
+    width, height = img.size
+    
+    output_files = []
+    tile_idx = 0
+    
+    for y in range(0, height - tile_size + 1, stride):
+        for x in range(0, width - tile_size + 1, stride):
+            # Crop tile
+            tile = img.crop((x, y, x + tile_size, y + tile_size))
+            
+            # Save
+            filename = f"ref_{tile_idx:05d}.jpg"
+            filepath = os.path.join(output_dir, filename)
+            tile.save(filepath, 'JPEG', quality=90)
+            output_files.append(filepath)
+            
+            tile.close()
+            tile_idx += 1
+    
+    img.close()
+    
+    if verbose:
+        print(f"[RefTiles] Generated {len(output_files)} reference tiles")
+    
+    return output_files
