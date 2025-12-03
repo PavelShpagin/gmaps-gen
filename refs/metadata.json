@@ -1,0 +1,19 @@
+{
+  "mosaic_path": "demo_mosaic.jpg",
+  "mosaic_size": [
+    7680,
+    7440
+  ],
+  "tile_size_px": 500,
+  "spacing_m": 40.0,
+  "spacing_px": 210,
+  "step_px": 210,
+  "overlap": 0.0,
+  "zoom": 19,
+  "meters_per_pixel": 0.19012258107304708,
+  "center_lat": 50.45,
+  "center_lon": 30.52,
+  "grid_rows": 34,
+  "grid_cols": 35,
+  "total_refs": 1088
+}

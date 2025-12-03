@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NaviLoc — Cloud API Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #fff;
+        --fg: #111;
+        --muted: #666;
+        --light: #999;
+        --border: #e0e0e0;
+        --surface: #fafafa;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: "Inter", -apple-system, sans-serif;
+        font-size: 18px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .deck {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+
+      .slide {
+        display: none;
+        width: 100%;
+        height: 100%;
+        padding: 64px 96px 80px;
+        overflow: auto;
+      }
+      .slide.active {
+        display: block;
+      }
+
+      /* Typography */
+      h1 {
+        font-family: "Crimson Pro", Georgia, serif;
+        font-size: 56px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-family: "Crimson Pro", Georgia, serif;
+        font-size: 42px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-bottom: 40px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      h3 {
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin-bottom: 16px;
+      }
+      p {
+        margin-bottom: 16px;
+        color: var(--fg);
+      }
+
+      .subtitle {
+        font-size: 22px;
+        color: var(--muted);
+        font-weight: 400;
+        margin-bottom: 48px;
+      }
+
+      .meta {
+        position: absolute;
+        bottom: 32px;
+        left: 96px;
+        font-size: 13px;
+        color: var(--light);
+      }
+
+      /* Lists */
+      ul {
+        margin: 0 0 24px 24px;
+      }
+      li {
+        margin-bottom: 12px;
+        color: var(--fg);
+      }
+      li::marker {
+        color: var(--light);
+      }
+
+      /* Code */
+      code {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.85em;
+        background: var(--surface);
+        padding: 2px 6px;
+        border-radius: 3px;
+        border: 1px solid var(--border);
+      }
+      .code-block {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 14px;
+        background: var(--fg);
+        color: #f0f0f0;
+        padding: 24px 28px;
+        border-radius: 4px;
+        overflow-x: auto;
+        white-space: pre;
+        margin: 24px 0;
+        line-height: 1.5;
+      }
+
+      /* Layout */
+      .cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 64px;
+        margin-top: 32px;
+      }
+      .col h3 {
+        margin-top: 0;
+      }
+
+      /* Data table */
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 24px 0;
+        font-size: 15px;
+      }
+      .data-table th {
+        text-align: left;
+        font-weight: 500;
+        padding: 12px 16px;
+        border-bottom: 2px solid var(--fg);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+      }
+      .data-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .data-table tr:last-child td {
+        border-bottom: none;
+      }
+      .data-table .num {
+        font-family: "IBM Plex Mono", monospace;
+        text-align: right;
+      }
+      .data-table .highlight {
+        font-weight: 600;
+      }
+
+      /* Stats row */
+      .stats {
+        display: flex;
+        gap: 48px;
+        margin: 40px 0;
+        padding: 32px 0;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+      .stat-item {
+        flex: 1;
+      }
+      .stat-value {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 48px;
+        font-weight: 500;
+        line-height: 1;
+        margin-bottom: 8px;
+      }
+      .stat-label {
+        font-size: 13px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      /* Footer */
+      .footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 48px;
+        padding: 0 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: var(--light);
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+        font-family: "IBM Plex Mono", monospace;
+      }
+      .page-num {
+        font-weight: 500;
+      }
+
+      /* Slide number */
+      .slide-num {
+        position: absolute;
+        top: 64px;
+        right: 96px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 13px;
+        color: var(--light);
+      }
+
+      @media (max-width: 1000px) {
+        .slide {
+          padding: 48px;
+        }
+        h1 {
+          font-size: 40px;
+        }
+        h2 {
+          font-size: 32px;
+        }
+        .cols {
+          grid-template-columns: 1fr;
+          gap: 32px;
+        }
+        .stats {
+          flex-wrap: wrap;
+          gap: 24px;
+        }
+        .meta {
+          left: 48px;
+        }
+        .slide-num {
+          right: 48px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck" id="deck">
+      <!-- Slide 1: Title -->
+      <section class="slide active">
+        <div style="margin-top: 80px">
+          <h3>Cloud API Lab</h3>
+          <h1>
+            NaviLoc: Visual Global Localization<br />for GNSS-Denied UAV
+            Navigation
+          </h1>
+          <p class="subtitle">
+            Практичне використання Google Maps Static API<br />для створення
+            датасетів супутникових зображень
+          </p>
+        </div>
+
+        <div style="margin-top: 64px">
+          <p style="color: var(--muted)">
+            Пайплайн збору супутникових даних з хмарного API для задач<br />
+            візуальної локалізації безпілотників в умовах відсутності GPS.
+          </p>
+        </div>
+
+        <p class="meta">Pavel Shpagin</p>
+      </section>
+
+      <!-- Slide 2: Overview -->
+      <section class="slide">
+        <span class="slide-num">01</span>
+        <h2>Огляд проєкту</h2>
+
+        <div class="cols">
+          <div class="col">
+            <h3>Компоненти системи</h3>
+            <ul>
+              <li>
+                <code>maps_fast.py</code> — паралельне завантаження тайлів
+              </li>
+              <li><code>maps_sequential.py</code> — послідовний fallback</li>
+              <li><code>create_ref_dataset.py</code> — генерація референсів</li>
+              <li><code>benchmark.py</code> — вимірювання швидкодії</li>
+            </ul>
+          </div>
+          <div class="col">
+            <h3>Параметри датасету (paper)</h3>
+            <ul>
+              <li>462 референс тайли (21 × 22 сітка)</li>
+              <li>Покриття: 800 × 840 метрів</li>
+              <li>Крок сітки: 40 метрів</li>
+              <li>Роздільність: 256 × 256 px</li>
+            </ul>
+          </div>
+        </div>
+
+        <div
+          style="
+            margin-top: 48px;
+            padding: 24px;
+            background: var(--surface);
+            border-radius: 4px;
+          "
+        >
+          <p style="margin: 0; color: var(--muted)">
+            <strong style="color: var(--fg)">Принцип:</strong>
+            завантаження великої мозаїки одним пакетом запитів, потім локальна
+            нарізка референсів без додаткових звернень до API.
+          </p>
+        </div>
+      </section>
+
+      <!-- Slide 3: API -->
+      <section class="slide">
+        <span class="slide-num">02</span>
+        <h2>Google Maps Static API</h2>
+
+        <div class="code-block">
+          GET https://maps.googleapis.com/maps/api/staticmap
+          ?center=50.4500,30.5200 &zoom=19 &size=640x640 &scale=2
+          &maptype=satellite &key=API_KEY &signature=HMAC_SHA1
+        </div>
+
+        <div class="cols">
+          <div class="col">
+            <h3>Параметри запиту</h3>
+            <ul>
+              <li><strong>center</strong> — координати центру (lat, lon)</li>
+              <li><strong>zoom</strong> — рівень деталізації (18–20)</li>
+              <li><strong>size</strong> — розмір у пікселях (max 640)</li>
+              <li><strong>signature</strong> — HMAC-SHA1 для квоти</li>
+            </ul>
+          </div>
+          <div class="col">
+            <h3>Імплементація</h3>
+            <ul>
+              <li>Web Mercator проекція для точного зшивання</li>
+              <li>Token bucket rate limiting (25 req/s)</li>
+              <li>Обрізання watermark (40px знизу)</li>
+              <li>Exponential backoff для ретраїв</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 4: Performance -->
+      <section class="slide">
+        <span class="slide-num">03</span>
+        <h2>Паралельне завантаження</h2>
+
+        <div class="stats">
+          <div class="stat-item">
+            <div class="stat-value">7.4×</div>
+            <div class="stat-label">Прискорення</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">5.3s</div>
+            <div class="stat-label">36 тайлів</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">6.9</div>
+            <div class="stat-label">tiles/sec</div>
+          </div>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Метод</th>
+              <th>Тайлів</th>
+              <th class="num">Час</th>
+              <th class="num">Throughput</th>
+              <th class="num">Speedup</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Sequential</td>
+              <td>36</td>
+              <td class="num">39.2 s</td>
+              <td class="num">0.9 t/s</td>
+              <td class="num">1.0×</td>
+            </tr>
+            <tr>
+              <td class="highlight">Parallel (10 workers)</td>
+              <td>36</td>
+              <td class="num highlight">5.3 s</td>
+              <td class="num highlight">6.9 t/s</td>
+              <td class="num highlight">7.4×</td>
+            </tr>
+            <tr>
+              <td>Parallel (15 workers)</td>
+              <td>132</td>
+              <td class="num">52.8 s</td>
+              <td class="num">2.5 t/s</td>
+              <td class="num">~2.7×</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p style="color: var(--muted); font-size: 15px; margin-top: 24px">
+          ThreadPoolExecutor з token bucket rate limiter. Оптимум: 10–15 workers
+          для уникнення HTTP 429.
+        </p>
+      </section>
+
+      <!-- Slide 5: Dataset -->
+      <section class="slide">
+        <span class="slide-num">04</span>
+        <h2>Референс-датасет</h2>
+
+        <div class="stats">
+          <div class="stat-item">
+            <div class="stat-value">462</div>
+            <div class="stat-label">Тайлів</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">21×22</div>
+            <div class="stat-label">Сітка</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">40m</div>
+            <div class="stat-label">Крок</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">0.19</div>
+            <div class="stat-label">м/px</div>
+          </div>
+        </div>
+
+        <div class="cols">
+          <div class="col">
+            <h3>Параметри (NaviLoc paper)</h3>
+            <ul>
+              <li>Zoom 19: ~0.19 м/піксель</li>
+              <li>Spacing 40m: базовий інтервал</li>
+              <li>Tile 256×256: для CNN features</li>
+              <li>Coverage: 800 × 840 метрів</li>
+            </ul>
+          </div>
+          <div class="col">
+            <h3>Генерація</h3>
+            <div class="code-block" style="font-size: 13px; padding: 16px 20px">
+              python create_ref_dataset.py \ --mosaic demo_mosaic.jpg \
+              --tile-size 256 \ --spacing 40
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 6: Algorithm -->
+      <section class="slide">
+        <span class="slide-num">05</span>
+        <h2>Алгоритм NaviLoc</h2>
+
+        <div class="cols">
+          <div class="col">
+            <h3>Три етапи</h3>
+            <ul>
+              <li>
+                <strong>Global Alignment</strong><br />
+                <span style="color: var(--muted)"
+                  >Median-based Procrustes alignment</span
+                >
+              </li>
+              <li>
+                <strong>Heading Rectification</strong><br />
+                <span style="color: var(--muted)"
+                  >Поворот query до канонічної Півночі</span
+                >
+              </li>
+              <li>
+                <strong>Sliding Window SE(2)</strong><br />
+                <span style="color: var(--muted)"
+                  >Локальна оптимізація з overlap averaging</span
+                >
+              </li>
+            </ul>
+
+            <p
+              style="
+                margin-top: 32px;
+                padding: 16px;
+                background: var(--surface);
+                border-radius: 4px;
+                font-size: 15px;
+              "
+            >
+              <strong>Інсайт:</strong> CNN features не інваріантні до повороту.
+              Heading rectification покращує matching на всій траєкторії.
+            </p>
+          </div>
+          <div class="col">
+            <h3>Результати</h3>
+            <table class="data-table" style="margin-top: 0">
+              <thead>
+                <tr>
+                  <th>Метрика</th>
+                  <th class="num">Значення</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>ATE (NaviLoc)</td>
+                  <td class="num highlight">20.38 m</td>
+                </tr>
+                <tr>
+                  <td>vs VIO drift</td>
+                  <td class="num">31×</td>
+                </tr>
+                <tr>
+                  <td>vs AnyLoc-GeM</td>
+                  <td class="num">17×</td>
+                </tr>
+                <tr>
+                  <td>Backbone</td>
+                  <td class="num">MobileNet-V3</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 7: Conclusions -->
+      <section class="slide">
+        <span class="slide-num">06</span>
+        <h2>Висновки</h2>
+
+        <div class="cols">
+          <div class="col">
+            <h3>Cloud API Pipeline</h3>
+            <ul>
+              <li>
+                Google Maps Static API забезпечує швидкий доступ до супутникових
+                даних
+              </li>
+              <li>
+                Паралельне завантаження дає <strong>7.4× прискорення</strong>
+              </li>
+              <li>Нарізка референсів з мозаїки економить API-запити</li>
+              <li>462 тайли за ~67 секунд (vs 8+ хвилин sequential)</li>
+            </ul>
+          </div>
+          <div class="col">
+            <h3>Рекомендації</h3>
+            <ul>
+              <li>URL signing для великих обсягів даних</li>
+              <li>10–15 workers оптимально (rate limiting)</li>
+              <li>Web Mercator для безшовного зшивання</li>
+              <li>Zoom 19 для VPR на низьких висотах</li>
+            </ul>
+          </div>
+        </div>
+
+        <div
+          style="
+            margin-top: 64px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+          "
+        >
+          <p style="color: var(--muted); font-size: 15px">
+            Код: <code>run.py</code> · Документація:
+            <code>hal_naviloc.pdf</code>
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <div class="footer">
+      <span class="page-num"
+        ><span id="current">1</span> / <span id="total">7</span></span
+      >
+      <span>NaviLoc · Cloud API Lab</span>
+      <span>← →</span>
+    </div>
+
+    <script>
+      (function () {
+        const slides = Array.from(document.querySelectorAll(".slide"));
+        const total = slides.length;
+        const currentEl = document.getElementById("current");
+        const totalEl = document.getElementById("total");
+        totalEl.textContent = total;
+
+        let current = 0;
+
+        function show(i) {
+          current = Math.max(0, Math.min(total - 1, i));
+          slides.forEach((s, idx) =>
+            s.classList.toggle("active", idx === current)
+          );
+          currentEl.textContent = current + 1;
+        }
+
+        document.addEventListener("keydown", (e) => {
+          if (["ArrowRight", "PageDown", " "].includes(e.key)) {
+            e.preventDefault();
+            show(current + 1);
+          }
+          if (["ArrowLeft", "PageUp"].includes(e.key)) {
+            e.preventDefault();
+            show(current - 1);
+          }
+          if (e.key === "Home") {
+            e.preventDefault();
+            show(0);
+          }
+          if (e.key === "End") {
+            e.preventDefault();
+            show(total - 1);
+          }
+        });
+
+        document.addEventListener("click", (e) => {
+          if (e.target.closest("a, button, code")) return;
+          if (e.clientX > window.innerWidth / 2) show(current + 1);
+          else show(current - 1);
+        });
+
+        show(0);
+      })();
+    </script>
+  </body>
+</html>
