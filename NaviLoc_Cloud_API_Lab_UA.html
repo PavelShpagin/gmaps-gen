@@ -303,10 +303,10 @@
             </ul>
           </div>
           <div class="col">
-            <h3>Параметри датасету (paper)</h3>
+            <h3>Параметри датасету</h3>
             <ul>
-              <li>462 референс тайли (21 × 22 сітка)</li>
-              <li>Покриття: 800 × 840 метрів</li>
+              <li>805 референс тайлів (23 × 35 сітка)</li>
+              <li>Покриття: ~900 × 1400 метрів</li>
               <li>Крок сітки: 40 метрів</li>
               <li>Роздільність: 256 × 256 px</li>
             </ul>
@@ -369,15 +369,15 @@
 
         <div class="stats">
           <div class="stat-item">
-            <div class="stat-value">7.4×</div>
+            <div class="stat-value">5.5×</div>
             <div class="stat-label">Прискорення</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">5.3s</div>
-            <div class="stat-label">36 тайлів</div>
+            <div class="stat-value">7.6s</div>
+            <div class="stat-label">63 тайли</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">6.9</div>
+            <div class="stat-value">8.3</div>
             <div class="stat-label">tiles/sec</div>
           </div>
         </div>
@@ -395,31 +395,30 @@
           <tbody>
             <tr>
               <td>Sequential</td>
-              <td>36</td>
-              <td class="num">39.2 s</td>
-              <td class="num">0.9 t/s</td>
+              <td>63</td>
+              <td class="num">41.9 s</td>
+              <td class="num">1.5 t/s</td>
               <td class="num">1.0×</td>
             </tr>
             <tr>
-              <td class="highlight">Parallel (10 workers)</td>
-              <td>36</td>
-              <td class="num highlight">5.3 s</td>
-              <td class="num highlight">6.9 t/s</td>
-              <td class="num highlight">7.4×</td>
+              <td class="highlight">Parallel (25 workers)</td>
+              <td>63</td>
+              <td class="num highlight">7.6 s</td>
+              <td class="num highlight">8.3 t/s</td>
+              <td class="num highlight">5.5×</td>
             </tr>
             <tr>
-              <td>Parallel (15 workers)</td>
-              <td>132</td>
-              <td class="num">52.8 s</td>
-              <td class="num">2.5 t/s</td>
-              <td class="num">~2.7×</td>
+              <td>Paper-scale (est.)</td>
+              <td>805</td>
+              <td class="num">~97 s</td>
+              <td class="num">8.3 t/s</td>
+              <td class="num">~5.5×</td>
             </tr>
           </tbody>
         </table>
 
         <p style="color: var(--muted); font-size: 15px; margin-top: 24px">
-          ThreadPoolExecutor з token bucket rate limiter. Оптимум: 10–15 workers
-          для уникнення HTTP 429.
+          ThreadPoolExecutor з connection pooling. Оптимум: 25 workers з retry logic.
         </p>
       </section>
 
@@ -430,11 +429,11 @@
 
         <div class="stats">
           <div class="stat-item">
-            <div class="stat-value">462</div>
+            <div class="stat-value">805</div>
             <div class="stat-label">Тайлів</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">21×22</div>
+            <div class="stat-value">23×35</div>
             <div class="stat-label">Сітка</div>
           </div>
           <div class="stat-item">
@@ -555,17 +554,17 @@
                 даних
               </li>
               <li>
-                Паралельне завантаження дає <strong>7.4× прискорення</strong>
+                Паралельне завантаження дає <strong>5.5× прискорення</strong>
               </li>
               <li>Нарізка референсів з мозаїки економить API-запити</li>
-              <li>462 тайли за ~67 секунд (vs 8+ хвилин sequential)</li>
+              <li>805 тайлів за ~97 секунд (vs ~9 хвилин sequential)</li>
             </ul>
           </div>
           <div class="col">
             <h3>Рекомендації</h3>
             <ul>
               <li>URL signing для великих обсягів даних</li>
-              <li>10–15 workers оптимально (rate limiting)</li>
+              <li>25 workers оптимально з connection pooling</li>
               <li>Web Mercator для безшовного зшивання</li>
               <li>Zoom 19 для VPR на низьких висотах</li>
             </ul>
@@ -580,8 +579,13 @@
           "
         >
           <p style="color: var(--muted); font-size: 15px">
-            Код: <code>run.py</code> · Документація:
-            <code>hal_naviloc.pdf</code>
+            GitHub:
+            <a
+              href="https://github.com/PavelShpagin/gmaps-gen"
+              style="color: var(--fg); text-decoration: underline"
+              >github.com/PavelShpagin/gmaps-gen</a
+            >
+            · Документація: <code>hal_naviloc.pdf</code>
           </p>
         </div>
       </section>

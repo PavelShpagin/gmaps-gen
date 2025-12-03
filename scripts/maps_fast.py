@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """
-Super-Optimized Parallel Google Maps Downloader
-================================================
-Uses connection pooling and aggressive parallelism.
-Achieves 7-10x speedup over sequential.
+Optimized Parallel Google Maps Downloader
+==========================================
+Connection pooling + retry logic for reliable high-throughput downloads.
 """
 
 import os
 import sys
 import time
-import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Tuple, Optional, Dict, List
 from PIL import Image
@@ -21,37 +19,38 @@ import hashlib
 import base64
 from urllib.parse import urlencode
 from io import BytesIO
+import threading
 
 sys.path.insert(0, os.path.dirname(__file__))
 from maps_core import calculate_tile_grid, stitch_mosaic
 
 
-# Global session for connection pooling
-_session = None
+class SessionPool:
+    """Thread-local session pool for connection reuse."""
+    def __init__(self):
+        self._local = threading.local()
+    
+    def get(self):
+        if not hasattr(self._local, 'session'):
+            session = requests.Session()
+            retry = Retry(total=3, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504])
+            adapter = HTTPAdapter(pool_connections=10, pool_maxsize=10, max_retries=retry)
+            session.mount('https://', adapter)
+            self._local.session = session
+        return self._local.session
 
-def get_session():
-    """Get or create a session with connection pooling."""
-    global _session
-    if _session is None:
-        _session = requests.Session()
-        # Aggressive connection pooling
-        adapter = HTTPAdapter(
-            pool_connections=50,
-            pool_maxsize=50,
-            max_retries=Retry(total=2, backoff_factor=0.1)
-        )
-        _session.mount('https://', adapter)
-        _session.mount('http://', adapter)
-    return _session
+
+_pool = SessionPool()
 
 
 def download_tile_fast(
     lat: float, lon: float,
     zoom: int, tile_size_px: int, scale: int,
     api_key: str, secret: str = None,
-    crop_bottom: int = 40
+    crop_bottom: int = 40,
+    max_retries: int = 3
 ) -> Optional[Image.Image]:
-    """Download a single tile using connection pooling."""
+    """Download a single tile with retries."""
     params = {
         'center': f'{lat:.10f},{lon:.10f}',
         'zoom': zoom,
@@ -73,23 +72,27 @@ def download_tile_fast(
     else:
         full_url = "https://maps.googleapis.com/maps/api/staticmap?" + urlencode(params)
     
-    try:
-        response = get_session().get(full_url, timeout=10)
-        response.raise_for_status()
-        
-        if response.headers.get('content-type', '').startswith('image'):
-            img = Image.open(BytesIO(response.content))
-            width, height = img.size
-            if crop_bottom > 0:
-                img = img.crop((0, 0, width, height - crop_bottom))
-            return img
-    except Exception:
-        pass
+    session = _pool.get()
+    
+    for attempt in range(max_retries):
+        try:
+            response = session.get(full_url, timeout=15)
+            response.raise_for_status()
+            
+            if response.headers.get('content-type', '').startswith('image'):
+                img = Image.open(BytesIO(response.content))
+                width, height = img.size
+                if crop_bottom > 0:
+                    img = img.crop((0, 0, width, height - crop_bottom))
+                return img
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(0.5 * (attempt + 1))
     return None
 
 
 def download_tile_worker(args):
-    """Worker function - minimal overhead."""
+    """Worker function."""
     req, zoom, tile_size, scale, api_key, secret, crop_bottom = args
     
     img = download_tile_fast(
@@ -116,17 +119,14 @@ def download_satellite_map_fast(
     crop_bottom: int = 40,
     api_key: str = None,
     secret: str = None,
-    max_workers: int = 30,
+    max_workers: int = 25,
     verbose: bool = True
 ) -> Tuple[Optional[Image.Image], Optional[Dict]]:
     """
-    Download satellite mosaic using optimized parallel threads.
+    Download satellite mosaic using parallel threads.
     
     Args:
-        max_workers: Concurrent threads (30 is optimal for Google Maps API)
-    
-    Returns:
-        (mosaic_image, metadata) or (None, None) if failed
+        max_workers: Concurrent threads (25 optimal for Google Maps API)
     """
     if api_key is None:
         api_key = os.environ.get('GOOGLE_MAPS_API_KEY') or os.environ.get('GMAPS_KEY')
@@ -146,7 +146,6 @@ def download_satellite_map_fast(
         print(f"[Fast] Downloading {total_tiles} tiles ({num_rows}x{num_cols})")
         print(f"[Fast]   Workers: {max_workers}")
     
-    # Prepare work items - no rate limiter overhead
     work_items = [
         (req, zoom, tile_size_px, scale, api_key, secret, crop_bottom)
         for req in tile_requests
@@ -170,21 +169,16 @@ def download_satellite_map_fast(
                 print(f"[Fast]   Progress: {completed}/{total_tiles} ({rate:.1f} t/s)")
     
     elapsed = time.time() - start_time
-    
-    # Sort by index
     results.sort(key=lambda x: x['index'])
-    
     success_count = sum(1 for r in results if r['success'])
     
     if verbose:
         print(f"[Fast] Downloaded {success_count}/{total_tiles} in {elapsed:.2f}s")
         print(f"[Fast]   Throughput: {total_tiles/elapsed:.1f} tiles/sec")
     
-    if success_count < total_tiles * 0.5:
-        print(f"[Fast] ERROR: Too many failures ({total_tiles - success_count}/{total_tiles})")
-        return None, None
+    if success_count < total_tiles * 0.9:
+        print(f"[Fast] WARNING: Many failures ({total_tiles - success_count}/{total_tiles})")
     
-    # Stitch mosaic
     tiles_for_stitch = [{'row': r['row'], 'col': r['col'], 'image': r['image']} for r in results]
     mosaic = stitch_mosaic(tiles_for_stitch, num_rows, num_cols, tile_size_px, scale, crop_bottom)
     
@@ -199,34 +193,3 @@ def download_satellite_map_fast(
         print(f"[Fast] Mosaic: {mosaic.size[0]}x{mosaic.size[1]} px")
     
     return mosaic, metadata
-
-
-if __name__ == '__main__':
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='Fast parallel Google Maps downloader')
-    parser.add_argument('--lat-min', type=float, default=50.440)
-    parser.add_argument('--lat-max', type=float, default=50.460)
-    parser.add_argument('--lon-min', type=float, default=30.505)
-    parser.add_argument('--lon-max', type=float, default=30.545)
-    parser.add_argument('--zoom', type=int, default=19)
-    parser.add_argument('--workers', type=int, default=30)
-    parser.add_argument('--output', type=str, default='mosaic_fast.jpg')
-    args = parser.parse_args()
-    
-    try:
-        from dotenv import load_dotenv
-        load_dotenv()
-    except ImportError:
-        pass
-    
-    mosaic, meta = download_satellite_map_fast(
-        args.lat_min, args.lat_max,
-        args.lon_min, args.lon_max,
-        zoom=args.zoom,
-        max_workers=args.workers
-    )
-    
-    if mosaic:
-        mosaic.save(args.output, quality=95)
-        print(f"Saved: {args.output}")
